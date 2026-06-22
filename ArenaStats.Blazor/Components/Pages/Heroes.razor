@@ -1,0 +1,96 @@
+﻿@page "/heroes"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpFactory
+
+<MudText Typo="Typo.h4" GutterBottom="true">Hero Stats</MudText>
+<MudText Typo="Typo.subtitle1" Class="mb-4" Style="color:#aaa">Pick rate, ban rate and presence rate across all 44 matches</MudText>
+
+@if (_heroes == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="mb-4 pa-3" Style="background:#1a1a2e">
+        <MudStack Row="true" Spacing="2">
+            <MudChip T="string" Color="@(_role == "" ? Color.Warning : Color.Default)"
+                     OnClick="@(() => SetRole(""))">All</MudChip>
+            <MudChip T="string" Color="@(_role == "tank" ? Color.Info : Color.Default)"
+                     OnClick="@(() => SetRole("tank"))">Tank</MudChip>
+            <MudChip T="string" Color="@(_role == "damage" ? Color.Error : Color.Default)"
+                     OnClick="@(() => SetRole("damage"))">Damage</MudChip>
+            <MudChip T="string" Color="@(_role == "support" ? Color.Success : Color.Default)"
+                     OnClick="@(() => SetRole("support"))">Support</MudChip>
+            <MudSpacer />
+            <MudTextField @bind-Value="_search" Placeholder="Search hero..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                          Margin="Margin.Dense" Style="max-width:200px" />
+        </MudStack>
+    </MudPaper>
+
+    <MudTable Items="@Filtered" Dense="true" Hover="true" Striped="true"
+              Style="background:#1a1a2e;color:white" SortLabel="Sort">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<HeroDto, object>(x => x.Name)">Hero</MudTableSortLabel></MudTh>
+            <MudTh>Role</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<HeroDto, object>(x => x.PickRate)" InitialDirection="SortDirection.Descending">Pick rate</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<HeroDto, object>(x => x.BanRate)">Ban rate</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<HeroDto, object>(x => x.PresenceRate)">Presence</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<HeroDto, object>(x => x.TotalPicks)">Picks</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<HeroDto, object>(x => x.TotalBans)">Bans</MudTableSortLabel></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Style="font-weight:600">@context.Name</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@RoleColor(context.Role)">@context.Role</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudProgressLinear Value="@context.PickRate" Max="100" Style="width:80px;height:6px" Color="Color.Info" />
+                    <MudText Typo="Typo.caption">@context.PickRate.ToString("F1")%</MudText>
+                </MudStack>
+            </MudTd>
+            <MudTd>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudProgressLinear Value="@context.BanRate" Max="100" Style="width:80px;height:6px" Color="Color.Warning" />
+                    <MudText Typo="Typo.caption">@context.BanRate.ToString("F1")%</MudText>
+                </MudStack>
+            </MudTd>
+            <MudTd>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudProgressLinear Value="@context.PresenceRate" Max="100" Style="width:80px;height:6px" Color="Color.Success" />
+                    <MudText Typo="Typo.caption">@context.PresenceRate.ToString("F1")%</MudText>
+                </MudStack>
+            </MudTd>
+            <MudTd>@context.TotalPicks</MudTd>
+            <MudTd>@context.TotalBans</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<HeroDto>? _heroes;
+    private string _role = "";
+    private string _search = "";
+
+    private IEnumerable<HeroDto> Filtered => (_heroes ?? [])
+        .Where(h => (_role == "" || h.Role == _role)
+                 && (_search == "" || h.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))
+        .OrderByDescending(h => h.PickRate);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpFactory.CreateClient("API");
+        _heroes = await http.GetFromJsonAsync<List<HeroDto>>("api/heroes");
+    }
+
+    private void SetRole(string role) => _role = role;
+
+    private Color RoleColor(string role) => role switch
+    {
+        "tank" => Color.Info,
+        "damage" => Color.Error,
+        "support" => Color.Success,
+        _ => Color.Default
+    };
+}

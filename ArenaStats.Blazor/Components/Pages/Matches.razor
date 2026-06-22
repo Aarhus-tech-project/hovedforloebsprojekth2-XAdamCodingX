@@ -1,0 +1,118 @@
+﻿@page "/matches"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpFactory
+
+<MudText Typo="Typo.h4" GutterBottom="true">Match Browser</MudText>
+<MudText Typo="Typo.subtitle1" Class="mb-4" Style="color:#aaa">All 44 matches — click a row to see picks & bans</MudText>
+
+@if (_matches == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="mb-4 pa-3" Style="background:#1a1a2e">
+        <MudStack Row="true" Spacing="2">
+            <MudChip T="string" Color="@(_region == "" ? Color.Warning : Color.Default)"
+                     OnClick="@(() => _region = "")">All</MudChip>
+            <MudChip T="string" Color="@(_region == "EUROPE" ? Color.Info : Color.Default)"
+                     OnClick="@(() => _region = "EUROPE")">Europe</MudChip>
+            <MudChip T="string" Color="@(_region == "NORTH AMERICA" ? Color.Success : Color.Default)"
+                     OnClick="@(() => _region = "NORTH AMERICA")">North America</MudChip>
+        </MudStack>
+    </MudPaper>
+
+    <MudTable Items="@Filtered" Dense="true" Hover="true" Striped="true"
+              Style="background:#1a1a2e;color:white" T="MatchDto"
+              OnRowClick="@(args => LoadMatch(args.Item))">
+        <HeaderContent>
+            <MudTh>Match</MudTh>
+            <MudTh>Region</MudTh>
+            <MudTh>Stage</MudTh>
+            <MudTh>Picks</MudTh>
+            <MudTh>Bans</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Style="font-weight:600">@context.Name</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.Region == "EUROPE" ? Color.Info : Color.Success)">
+                    @context.Region
+                </MudChip>
+            </MudTd>
+            <MudTd Style="color:#aaa">@context.Stage</MudTd>
+            <MudTd>@context.TotalPicks</MudTd>
+            <MudTd>@context.TotalBans</MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    @if (_detail != null)
+    {
+        <MudPaper Class="mt-4 pa-4" Style="background:#1a1a2e;color:white">
+            <MudText Typo="Typo.h6" Class="mb-3">@_detail.Match.Name</MudText>
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.subtitle2" Style="color:#38bdf8" Class="mb-2">PICKS</MudText>
+                    @foreach (var h in _detail.Heroes.Where(h => h.Phase == "pick").OrderByDescending(h => h.Count))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@RoleColor(h.Role)" Class="ma-1">
+                            @h.HeroName ×@h.Count
+                        </MudChip>
+                    }
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.subtitle2" Style="color:#f97316" Class="mb-2">BANS</MudText>
+                    @foreach (var h in _detail.Heroes.Where(h => h.Phase == "ban").OrderByDescending(h => h.Count))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ma-1">
+                            @h.HeroName
+                        </MudChip>
+                    }
+                </MudItem>
+            </MudGrid>
+            <MudText Typo="Typo.subtitle2" Style="color:#4ade80" Class="mt-3 mb-2">MAPS PLAYED</MudText>
+            @foreach (var m in _detail.Maps)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ma-1">
+                    @m.MapName ×@m.Count
+                </MudChip>
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    private List<MatchDto>? _matches;
+    private MatchDetailResponse? _detail;
+    private string _region = "";
+
+    private IEnumerable<MatchDto> Filtered => (_matches ?? [])
+        .Where(m => _region == "" || m.Region == _region);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpFactory.CreateClient("API");
+        _matches = await http.GetFromJsonAsync<List<MatchDto>>("api/matches");
+    }
+
+    private async Task LoadMatch(MatchDto match)
+    {
+        var http = HttpFactory.CreateClient("API");
+        _detail = await http.GetFromJsonAsync<MatchDetailResponse>($"api/matches/{match.Id}");
+    }
+
+    private Color RoleColor(string role) => role switch
+    {
+        "tank" => Color.Info,
+        "damage" => Color.Error,
+        "support" => Color.Success,
+        _ => Color.Default
+    };
+
+    private class MatchDetailResponse
+    {
+        public MatchDto Match { get; set; } = new();
+        public List<MatchHeroDto> Heroes { get; set; } = [];
+        public List<MatchMapDto> Maps { get; set; } = [];
+    }
+}

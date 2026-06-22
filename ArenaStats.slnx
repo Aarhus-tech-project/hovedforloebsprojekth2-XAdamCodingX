@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ArenaStats.API/ArenaStats.API.csproj" Id="077b71b4-4cbe-4024-996a-5c1394aa4872" />
+  <Project Path="ArenaStats.Blazor/ArenaStats.Blazor.csproj" Id="623c0829-3011-47c0-957e-f5bc7f035ce8" />
+  <Project Path="ArenaStats.Shared/ArenaStats.Shared.csproj" Id="b0ab90ec-f906-44e5-b913-dc630cfec87e" />
+</Solution>

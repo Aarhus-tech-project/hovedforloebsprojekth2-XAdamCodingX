@@ -1,0 +1,42 @@
+﻿@page "/maps"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpFactory
+
+<MudText Typo="Typo.h4" GutterBottom="true">Map Stats</MudText>
+<MudText Typo="Typo.subtitle1" Class="mb-4" Style="color:#aaa">Play rate across all matches</MudText>
+
+@if (_maps == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@_maps" Dense="true" Hover="true" Striped="true"
+              Style="background:#1a1a2e;color:white" SortLabel="Sort">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<MapDto, object>(x => x.Name)">Map</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MapDto, object>(x => x.TimesPlayed)" InitialDirection="SortDirection.Descending">Times played</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MapDto, object>(x => x.PlayRate)">Play rate</MudTableSortLabel></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Style="font-weight:600">@context.Name</MudTd>
+            <MudTd>@context.TimesPlayed</MudTd>
+            <MudTd>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudProgressLinear Value="@context.PlayRate" Max="100" Style="width:120px;height:6px" Color="Color.Info" />
+                    <MudText Typo="Typo.caption">@context.PlayRate.ToString("F1")%</MudText>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<MapDto>? _maps;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpFactory.CreateClient("API");
+        _maps = await http.GetFromJsonAsync<List<MapDto>>("api/maps");
+    }
+}
